@@ -10,8 +10,8 @@
 # Helps you navigate through source trees using custome book marks and
 # comes complete with auto-complete
 
-: ${go_projects_conf:=$HOME/bin/my_projects}
-# : ${go_script:=$HOME/tmp/new_go.sh}
+# version control root and bookmark definitions
+: ${go_projects_conf:=$HOME/go_bookmarks.conf}
 
 # ignored folders
 : ${go_ignore_dirs:="(CVS|\\.(svn|git|cvs))"}

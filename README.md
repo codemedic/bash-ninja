@@ -7,8 +7,8 @@ Some utility bash scripts that can be loaded into your bash profile to make your
 
 Say you have more than a few folder locations in which you do your coding etc, and you love living inside the terminal window, then look no further. Go will make your life easier.
 
-You will need to list all the locations that you want to set short cuts for into a text file and then assign each of them to a variable of the form 'cd_*'
-So for example, if you have libninja source code checked out into $HOME/svn/common/c++/libninja, you can add the below line to set the shortcut.
+You will need to list all the locations that you want to set short cuts for into a text file and then assign each of them to a variable of the form `'cd_*'`
+So for example, if you have libninja source code checked out into `$HOME/svn/common/c++/libninja`, you can add the below line to set the shortcut.
 
     cd_ninja=$HOME/svn/common/c++/libninja
 

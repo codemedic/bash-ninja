@@ -10,6 +10,13 @@
 # Helps you navigate through source trees using custome book marks and
 # comes complete with auto-complete
 
+__go__is_bash_interactive()
+{
+	[ -t 0 ] && true || false
+}
+
+if __go__is_bash_interactive; then
+
 # version control root and bookmark definitions
 : ${go_projects_conf:=$HOME/go_bookmarks.conf}
 
@@ -35,7 +42,6 @@ __d() {
 }
 
 # __included=$( ( [ "$(readlink -f $0)" == "/bin/bash" ] && [ "$( readlink -f "$go_script" )" == "$( readlink -f "${BASH_ARGV[0]}" )" ] ) && echo 1 || echo 0 )
-
 
 if ! declare -p __go__script_loaded &>/dev/null; then
 	__d go command loaded
@@ -67,12 +73,12 @@ __go__resolve_definition()
 
 __go__definitions_regex()
 {
-	echo ${!cd_*} | sed s/cd_//g | sed 's/ /\|/g'
+	echo ${!cd_*} | sed s/cd_//g | sed 's/ /\|/g' | __d
 }
 
 __go__definitions_name()
 {
-	echo $( echo ${!cd_*} | sed s/cd_//g | sed 's/ /# /g' )'#'
+	echo $( echo ${!cd_*} | sed s/cd_//g | sed 's/ /# /g' )'#' | __d
 }
 
 __go__normalise_path()
@@ -227,3 +233,4 @@ go()
 	cd $( __go__resolve_definition "$def" )/$def_subpath
 }
 
+fi # if __go__is_bash_interactive; then

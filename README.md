@@ -20,6 +20,32 @@ In order to install this into your world, edit your `.bashrc` and add the below 
     go_projects_conf=$HOME/go_bookmarks.conf
     source $HOME/go.sh
 
+The autocompletion is can be also used to lookup paths that start at the `cd_root`. So if you do `go /<TAB><TAB>`, it will fill in the first levels. This basically minimises the the need to add bookmarks to each and every project location in the source tree. This also works for paths under the bookmarked location. So if you have a bookmark `tests` to the below location; you can type `go tests#Debug` to `cd` into the `Debug` folder.
+
+    cpp-tests
+    +-- -
+    +-- boost_exceptions.cpp
+    +-- boost_time.cpp
+    +-- Debug/
+    |   +-- cpp-tests.d
+    |   +-- cpp-tests.o
+    |   +-- makefile
+    |   +-- objects.mk
+    |   +-- sources.mk
+    |   +-- subdir.mk
+    +-- gdb.settings
+    +-- hex.cpp
+    +-- iostreams_array_sink.cpp
+    +-- logger.h
+    +-- s3list_small.txt
+    +-- s3list.txt
+    +-- s3multidel.cpp
+    +-- tokenizer.cpp
+    +-- vg.log
+    +-- weak_set.cpp
+    +-- xxx
+
+
 ## License
 
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Bash Ninja</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="https://github.com/codemedic/bash-ninja" property="cc:attributionName" rel="cc:attributionURL">Dino Korah</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/deed.en_US">Creative Commons Attribution-ShareAlike 3.0 Unported License</a>.<br />Based on a work at <a xmlns:dct="http://purl.org/dc/terms/" href="https://github.com/codemedic/bash-ninja" rel="dct:source">https://github.com/codemedic/bash-ninja</a>

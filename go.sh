@@ -5,24 +5,25 @@
 #          (details available here http://creativecommons.org/licenses/by-sa/3.0/deed.en_US)
 # Author: Dino Korah
 # URL: https://github.com/codemedic/bash-ninja.
-# 
+#
 # Description:
 # Helps you navigate through source trees using custome book marks and
 # comes complete with auto-complete
 
-__go__is_bash_interactive()
+__go__is_interactive()
 {
 	[ -t 0 ] && true || false
 }
 
-if __go__is_bash_interactive; then
+if __go__is_interactive; then
 
 # version control root and bookmark definitions
 : ${go_projects_conf:=$HOME/go_bookmarks.conf}
 
 # ignored folders
-: ${go_ignore_dirs:="(CVS|\\.(svn|git|cvs))"}
+: ${go_ignore_dirs:="(CVS|\\.(svn|git|cvs|settings|kdev4))"}
 
+# debug prints enabled ?
 : ${go_debug:=0}
 
 # debug print
@@ -88,11 +89,14 @@ __go__normalise_path()
 
 __go__find_and_ignore()
 {
-	find_path="$( __go__normalise_path "$1" )";
-	common_prefix="$( __go__normalise_path "$2" )";
+	local find_path=$1
+	local find_chop=$2
+	local find_paste=$3
 
-	__d "find -L $find_path -mindepth 1 -maxdepth 1 -type d | egrep -v \"$go_ignore_dirs\" | __d | awk -F \"$common_prefix\" '\$1 ~ /^$/ { print \"'$3'\"\$2\"/\" }'";
-	find -L $find_path -mindepth 1 -maxdepth 1 -type d | egrep -v "$go_ignore_dirs" | __d | awk -F "$common_prefix" '$1 ~ /^$/ { print "'$3'"$2"/" }' | __d;
+	__d find_paste: $find_paste
+
+	__d 'find -L '$find_path' -mindepth 1 -maxdepth 1 -type d | egrep -v "'$go_ignore_dirs'" | __d | grep '$find_chop' | cut -b'$(( ${#find_chop} + 1 ))'-  | while read x; do [ -n "$x" ] && echo '$find_paste'$x/; done | __d';
+	find -L $find_path -mindepth 1 -maxdepth 1 -type d | egrep -v "$go_ignore_dirs" | __d | grep $find_chop | cut -b$(( ${#find_chop} + 1 ))-  | while read x; do [ -n "$x" ] && echo $find_paste$x/; done | __d;
 }
 
 __go__get_completions()
@@ -103,7 +107,6 @@ __go__get_completions()
 
 	local reply;
 
-	local vc;
 	local first=${COMP_WORDS[1]}
 	__d first_comp: $first
 
@@ -115,7 +118,7 @@ __go__get_completions()
 		vc=svn;
 		;;
 	*)
-		vc=svn;
+		: ${vc:=svn};
 		;;
 	esac
 
@@ -124,62 +127,57 @@ __go__get_completions()
 
 	__go__load_definitions $vc
 
-	local def;
-	local def_real;
-	local def_subpath;
-	local def_subpath_dir;
-	local def_subpath_comp;
+	local resolved_base_path;
+	local find_path
+	local find_chop
 
 	if [ -n "$cur" ]; then
 		# are we dealing with definition offset
 		# def#path/to/some/thing
-		if [[ "$cur" =~ \# ]]; then
-			def=${cur%%#*}
-			def_real=$def
-			def_subpath=$(echo $cur | sed 's/.*#//')
-			def_subpath_dir=$( dirname "$def_subpath" )
-			def_subpath_comp=$( basename "$def_subpath" )
-		elif [[ "$cur" =~ / ]]; then
-			def=root
-			def_real=root
-			def_subpath="$cur"
-			def_subpath_dir=$( dirname "$def_subpath" )
-			def_subpath_comp=$( basename "$def_subpath" )
-		else
-			def=$cur
-			def_real=$def
-			def_subpath=''
-			def_subpath_dir=''
-			def_subpath_comp=''
+		if [[ "$cur" =~ \# ]] && __go__is_defined ${cur%%#*}; then
+			__d ------------------------- 1
+
+			resolved_base_path=$( readlink -f $( __go__resolve_definition "${cur%%#*}" ) )
+			if [[ "${cur##*#}" =~ / ]]; then
+				find_path=${resolved_base_path}/$( dirname ${cur##*#} )
+				find_chop=${find_path}/$( basename ${cur##*#} )
+			else
+				find_path=${resolved_base_path}
+				find_chop=${find_path}/${cur##*#}
+			fi
+		elif [[ "$cur" =~ ^/ ]]; then
+			__d ------------------------- 2
+			resolved_base_path=$( readlink -f $( __go__resolve_definition root ) )
+			if [[ "${cur:1}" =~ / ]]; then
+				find_path=${resolved_base_path}$( dirname $cur )
+				find_chop=${find_path}/$( basename ${cur##*#} )
+			else
+				find_path=${resolved_base_path}
+				find_chop=${find_path}${cur}
+			fi
 		fi
+
+		__d resolved_base_path: $resolved_base_path
+		__d find_path: $find_path
+		__d find_chop: $find_chop
 	fi
 
-	__d def: $def
-	__d def_subpath: $def_subpath
-	__d def_subpath_dir: $def_subpath_dir
+	if [ -n "$find_path" -a -n "$find_chop" ]; then
+		if [ -d "$find_chop" ]; then
+			find_path=$( readlink -f $find_chop );
+			find_chop=$find_path/;
 
-	if [ -n "$def_subpath_dir" -o -n "$def_subpath" ]; then
-		local resolved_base_path=$( __go__resolve_definition "$def" )
-
-		if [ -n "$def_subpath" -a -d "$resolved_base_path/$def_subpath" ]; then
-			def_subpath_dir="$def_subpath"
-			def_subpath_comp=''
-		fi
-
-		if [ -n "$def_subpath_dir" ]; then
-			local find_path=$resolved_base_path/$def_subpath_dir/;
 			__d find_path: $find_path
+			__d find_chop: $find_chop
+		fi
 
-			reply="$reply $( __go__find_and_ignore $find_path "$find_path$def_subpath_comp" "$cur" )";
-			__d reply: $reply
-		fi
-	elif [ -n "$def" ]; then
-		if [[ "|$(__go__definitions_regex)|" =~ |${def}.*?| ]]; then
-			reply="$reply $(__go__definitions_name | sed 's/ /\n/g' | grep ^$def)"
-			__d reply: $reply
-		fi
+		reply="$reply $( __go__find_and_ignore $find_path $find_chop $cur )";
+		__d reply: $reply
+	elif [ -n "$cur" ]; then
+		reply="$reply $( __go__definitions_name | sed 's/ /\n/g' | grep ^$cur )"
+		__d reply: $reply
 	else
-		reply="$reply $(__go__definitions_name | sed 's/ /\n/g')"
+		reply="$reply $( __go__definitions_name | sed 's/ /\n/g' )"
 		__d reply: $reply
 
 		reply="$reply $( __go__find_and_ignore $cd_root "$cd_root" '' )";
@@ -203,12 +201,11 @@ go()
 		shift;
 		;;
 	*)
-		vc=svn;
+		: ${vc:=svn};
 		;;
 	esac
 
 	__d vc: $vc
-	__d cur: $cur
 
 	__go__load_definitions $vc
 
@@ -233,4 +230,4 @@ go()
 	cd $( __go__resolve_definition "$def" )/$def_subpath
 }
 
-fi # if __go__is_bash_interactive; then
+fi # if __go__is_interactive; then

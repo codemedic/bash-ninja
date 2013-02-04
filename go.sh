@@ -4,7 +4,7 @@
 # License: Creative Commons License
 #          (details available here http://creativecommons.org/licenses/by-sa/3.0/deed.en_US)
 # Author: Dino Korah
-# URL: https://github.com/codemedic/bash-ninja.
+# URL: https://github.com/codemedic/bash-ninja
 #
 # Description:
 # Helps you navigate through source trees using custome book marks and
@@ -16,6 +16,10 @@ __go__is_interactive()
 }
 
 if __go__is_interactive; then
+
+# the first one is the default
+: ${vc_options:=svn:git}
+: ${vc_default:=${vc_options%%:*}}
 
 # version control root and bookmark definitions
 : ${go_projects_conf:=$HOME/go_bookmarks.conf}
@@ -51,6 +55,12 @@ fi
 
 export __go__script_loaded=1
 
+__go__is_known_vc()
+{
+	local vc=$1;
+	[[ "$vc_options" =~ ^$vc:|:$vc:|$vc$ ]]
+}
+
 __go__is_defined()
 {
 	declare -p "cd_$1" &>/dev/null
@@ -82,11 +92,6 @@ __go__definitions_name()
 	echo $( echo ${!cd_*} | sed s/cd_//g | sed 's/ /# /g' )'#' | __d
 }
 
-__go__normalise_path()
-{
-	echo $1 | sed 's#//+#/#g'
-}
-
 __go__find_and_ignore()
 {
 	local find_path=$1
@@ -110,17 +115,9 @@ __go__get_completions()
 	local first=${COMP_WORDS[1]}
 	__d first_comp: $first
 
-	case "$first" in
-	git)
-		vc=git;
-		;;
-	svn)
-		vc=svn;
-		;;
-	*)
-		: ${vc:=svn};
-		;;
-	esac
+	if __go__is_known_vc $first; then
+		vc=$first;
+	fi
 
 	__d vc: $vc
 	__d cur: $cur
@@ -191,19 +188,10 @@ go()
 {
 	__d params: "$@"
 
-	case "$1" in
-	git)
-		vc=git;
+	if __go__is_known_vc $1; then
+		vc=$1;
 		shift;
-		;;
-	svn)
-		vc=svn;
-		shift;
-		;;
-	*)
-		: ${vc:=svn};
-		;;
-	esac
+	fi
 
 	__d vc: $vc
 

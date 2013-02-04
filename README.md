@@ -33,17 +33,8 @@ The autocompletion is can be also used to lookup paths that start at the `cd_roo
     |   +-- objects.mk
     |   +-- sources.mk
     |   +-- subdir.mk
-    +-- gdb.settings
-    +-- hex.cpp
-    +-- iostreams_array_sink.cpp
-    +-- logger.h
-    +-- s3list_small.txt
-    +-- s3list.txt
-    +-- s3multidel.cpp
     +-- tokenizer.cpp
-    +-- vg.log
     +-- weak_set.cpp
-    +-- xxx
 
 
 ## License

@@ -215,7 +215,13 @@ go()
 	fi
 
 	__d def: $def
-	cd $( __go__resolve_definition "$def" )/$def_subpath
+	__cd_path="$( __go__resolve_definition "$def" )";
+	[ -n "$def_subpath" ] &&
+		__cd_path="${__cd_path}/${def_subpath}";
+
+	[ -n "$__cd_path" ] &&
+		cd $__cd_path ||
+		echo GO path could not be found.
 }
 
 fi # if __go__is_interactive; then

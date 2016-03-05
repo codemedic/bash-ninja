@@ -224,4 +224,21 @@ go()
 		echo GO path could not be found.
 }
 
+go_add()
+{
+    local shortcut dir;
+    if [ -z "$1" ]; then
+        echo Shortcut name not given.
+        return 1
+    elif ! [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; then
+        echo "Shortcut name must be a valid bash variable name"
+        return 1;
+    fi
+
+    shortcut="$1"; shift;
+    dir="${1:-$(pwd)}";
+
+    echo "cd_$shortcut=\"$dir\"" >> "${go_projects_conf}";
+}
+
 fi # if __go__is_interactive; then

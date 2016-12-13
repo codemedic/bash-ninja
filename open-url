@@ -1,0 +1,75 @@
+#!/bin/bash
+
+command_exists() {
+    which "$1" >/dev/null 2>&1
+}
+
+add_browser_if_available() {
+    local browser="$1"; shift
+    local binary="$1"
+    [ -n "$binary" ] ||
+        binary="$browser"
+
+    if command_exists "$binary"; then
+        browsers[$browser]="$binary"
+        priority+=("$browser")
+    else
+        debug "$browser ($binary) not found"
+    fi
+}
+
+is_browser_running() {
+    debug "$1 - pids"
+    pgrep "$1"
+}
+
+launch() {
+    local browser="$1" && shift
+    debug "browser: $browser"
+    debug "browser-binary: ${browsers[$browser]}"
+
+    exec "${browsers[$browser]}" "$@" </dev/null >/dev/null 2>&1 &
+    disown
+    exit 0
+}
+
+# show bash substitutions; i.e turn on xtrace?
+if [ "$bash_debug" = 1 ]; then
+    set -x
+fi
+
+# be noisy .. show debug?
+if [[ "$debug" = 1  || "$bash_debug" = 1 ]]; then
+    debug() { echo "DEBUG: $*" 2>&1 ; }
+else
+    # keep it quiet, can ya!
+    exec </dev/null
+    exec >/dev/null
+    exec 2>&1
+
+    debug() { return 0; }
+fi
+
+# array to hold browser definitions
+declare -A browsers
+
+# browsers in priority order; filled in by add_browser_if_available
+priority=()
+
+# priority order of browsers
+add_browser_if_available vivaldi
+add_browser_if_available chrome google-chrome
+add_browser_if_available opera
+add_browser_if_available firefox
+add_browser_if_available epiphany-browser
+add_browser_if_available rekonq
+add_browser_if_available konqueror
+
+# loop through the priority list and see which one is already running
+for b in "${priority[@]}"; do
+    is_browser_running "$b" &&
+        launch "$b" "$@"
+done
+
+# if nothing was found running, launch in the first one
+launch "${priority[0]}" "$@"

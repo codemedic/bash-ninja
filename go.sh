@@ -10,50 +10,39 @@
 # Helps you navigate through source trees using custome book marks and
 # comes complete with auto-complete
 
-__go__is_interactive()
-{
-	[ -t 0 ] && true || false
-}
-
-if __go__is_interactive; then
+[ -t 0 ] || return 0
 
 # the first one is the default
-: ${vc_options:=svn:git}
-: ${vc_default:=${vc_options%%:*}}
+: "${vc_options:=svn:git:svnbranch}"
+: "${vc_default:=${vc_options%%:*}}"
 
 # version control root and bookmark definitions
-: ${go_projects_conf:=$HOME/go_bookmarks.conf}
-
-# ignored folders
-: ${go_ignore_dirs:="(CVS|\\.(svn|git|cvs|settings|kdev4))"}
+: "${go_projects_conf:=$HOME/go_bookmarks.conf}"
 
 # debug prints enabled ?
-: ${go_debug:=0}
+: "${go_debug:=0}"
+
+# bash debug/xtrace enabled ?
+: "${go_bash_debug:=0}"
+: "${go_bash_debug_file:="$HOME/go-xtrace.txt"}"
 
 # debug print
 __d() {
-	: ${go_debug_syslog_tag:=rm-go}
-	if [ "$go_debug" -eq 0 ]; then
-		if [ -z "$1" ]; then
-			cat
-		else
-			return;
-		fi
+	: "${go_debug_syslog_tag:=rm-go}"
+
+	[ "$go_debug" -eq 1 ] || {
+        # if debug is disables, the pipe form of invocations should still oipe through
+		[ -n "$1" ] || cat
+        return
+    }
+
+	if [ -n "$1" ]; then
+		/usr/bin/logger -t $go_debug_syslog_tag -- "$@" </dev/null
+	else
+        # pipe through mode
+        /usr/bin/logger -t $go_debug_syslog_tag -s 2>&1 | cut -c"$((${#go_debug_syslog_tag}+2))-"
 	fi
-
-	[ -n "$1" ] &&
-		/usr/bin/logger -t $go_debug_syslog_tag -- "$@" ||
-		( tee_file=/tmp/$$.$RANDOM; tee $tee_file | /usr/bin/logger -t $go_debug_syslog_tag; cat $tee_file; rm $tee_file )
 }
-
-# __included=$( ( [ "$(readlink -f $0)" == "/bin/bash" ] && [ "$( readlink -f "$go_script" )" == "$( readlink -f "${BASH_ARGV[0]}" )" ] ) && echo 1 || echo 0 )
-
-if ! declare -p __go__script_loaded &>/dev/null; then
-	__d go command loaded
-	complete -F __go__get_completions -o dirnames -o nospace go;
-fi
-
-export __go__script_loaded=1
 
 __go__is_known_vc()
 {
@@ -68,8 +57,9 @@ __go__is_defined()
 
 __go__load_definitions()
 {
-	vc=$1;
-	source $go_projects_conf
+	: "${vc:="${1:-}"}";
+	# shellcheck disable=SC1090
+	source "$go_projects_conf"
 }
 
 __go__resolve_definition()
@@ -78,133 +68,120 @@ __go__resolve_definition()
 		__go__is_defined "$1" &&
 			eval "echo \$cd_${1}"/;
 	else
-		echo $cd_root/
+		echo "${cd_root:-}/"
 	fi
 }
 
-__go__definitions_regex()
-{
-	echo ${!cd_*} | sed s/cd_//g | sed 's/ /\|/g' | __d
-}
+GoRegexBookmarkName='^[a-zA-Z0-9_]*$'
+GoRegexBookmarkSuffix='^(([a-zA-Z0-9_]+)#)(.*)$'
 
-__go__definitions_name()
-{
-	echo $( echo ${!cd_*} | sed s/cd_//g | sed 's/ /# /g' )'#' | __d
-}
+__go__get_completions() {
+    local cur bookmark
 
-__go__find_and_ignore()
-{
-	local find_path=$1
-	local find_chop=$2
-	local find_paste=$3
+    __d "param $*"
 
-	__d find_paste: $find_paste
+    # help with testing; pass in as args
+    if [ "$1" = go ]; then
+        cur=${COMP_WORDS[COMP_CWORD]}
+        local first=${COMP_WORDS[1]}
+        if __go__is_known_vc "$first"; then
+            vc=$first;
+        fi
 
-	__d 'find -L '$find_path' -mindepth 1 -maxdepth 1 -type d | egrep -v "'$go_ignore_dirs'" | __d | grep '$find_chop' | cut -b'$(( ${#find_chop} + 1 ))'-  | while read x; do [ -n "$x" ] && echo '$find_paste'$x/; done | __d';
-	find -L $find_path -mindepth 1 -maxdepth 1 -type d | egrep -v "$go_ignore_dirs" | __d | grep $find_chop | cut -b$(( ${#find_chop} + 1 ))-  | while read x; do [ -n "$x" ] && echo $find_paste$x/; done | __d;
-}
+        __d cur: "$cur"
+        __d first: "$first"
+        __d vc: "$vc"
 
-__go__get_completions()
-{
-	__d -------------------------------------------------------------
+        __go__load_definitions "$vc"
+    else
+        cur="$1"; shift
+    fi
 
-	local cur=${COMP_WORDS[COMP_CWORD]}
+    # enable extended globs option; restored at the end!
+    local saved_opts
+    saved_opts="$(shopt -p); $(set +o)"
+    shopt -s extglob
 
-	local reply;
+    [ "${go_bash_debug}" = 0 ] || {
+        exec {BASH_XTRACEFD}>"$go_bash_debug_file"
+        set -x
+    }
 
-	local first=${COMP_WORDS[1]}
-	__d first_comp: $first
+    if [[ "$cur" =~ $GoRegexBookmarkSuffix ]]; then
+        bookmark="${BASH_REMATCH[2]}"
+        local preserve_prefix="${BASH_REMATCH[1]}"
+        local suffix="${BASH_REMATCH[3]}"
 
-	if __go__is_known_vc $first; then
-		vc=$first;
-	fi
+        local find_completions=1 name_pattern=()
+        # e.g cd_root=/
+        local bookmark_var="cd_${bookmark}"
+        [[ ! -v "$bookmark_var" ]] || {
+            local path="${!bookmark_var}" path_offset
+            # e.g root#dev/
+            if [[ "$suffix" =~ /$ ]] && [ -d "${path}/${suffix}" ]; then
+                path_offset="$suffix"
+                path="${path}/${path_offset}"
+            # If there is a path in the suffix, look only in the closest directory (a level up) if that exists
+            # e.g root#dev/sel
+            elif [[ "$suffix" == */* ]] && [ -d "${path}/${suffix/%+([^\/])}" ]; then
+                # strip out the suffix
+                path_offset="${suffix/%+([^\/])}"
+                path="${path}/${path_offset}"
+                name_pattern=( -name "$(basename "$suffix")*" )
+            # a non-empty suffix and has no '/' in it (name pattern cannot have '/' in them)
+            elif [ -n "$suffix" ] && [[ "$suffix" != */* ]]; then
+                name_pattern=( -name "${suffix}*" )
+            elif [ -n "$suffix" ]; then
+                find_completions=0
+            fi
 
-	__d vc: $vc
-	__d cur: $cur
+            if [ "$find_completions" = 1 ]; then
+                while read -r compl_option; do
+                    [ "$compl_option" = '/' ] ||
+                        COMPREPLY+=( "${preserve_prefix}${path_offset}${compl_option}" )
+                done < <(
+                    local symlink
+                    find "$path" -maxdepth 1 "${name_pattern[@]}" -type d -printf "%P/\n"
+                    find "$path" -maxdepth 1 "${name_pattern[@]}" -type l -printf "%P\n" | while read -r symlink; do
+                        [ ! -d "$(readlink -f "${path}/${symlink}")" ] || echo "$symlink/"
+                    done
+                )
+            fi
+        }
+    elif [[ "$cur" =~ $GoRegexBookmarkName ]]; then
+        # shellcheck disable=SC2086
+        for bookmark in ${!cd_*}; do
+            [[ "$bookmark" != "cd_${cur}"* ]] || COMPREPLY+=( "${bookmark#cd_}#" )
+        done
+    fi
 
-	__go__load_definitions $vc
+	__d "COMPREPLY: ${COMPREPLY[*]}"
 
-	local resolved_base_path;
-	local find_path
-	local find_chop
-
-	if [ -n "$cur" ]; then
-		# are we dealing with definition offset
-		# def#path/to/some/thing
-		if [[ "$cur" =~ \# ]] && __go__is_defined ${cur%%#*}; then
-			__d ------------------------- 1
-
-			resolved_base_path=$( readlink -f $( __go__resolve_definition "${cur%%#*}" ) )
-			if [[ "${cur##*#}" =~ / ]]; then
-				find_path=${resolved_base_path}/$( dirname ${cur##*#} )
-				find_chop=${find_path}/$( basename ${cur##*#} )
-			else
-				find_path=${resolved_base_path}
-				find_chop=${find_path}/${cur##*#}
-			fi
-		elif [[ "$cur" =~ ^/ ]]; then
-			__d ------------------------- 2
-			resolved_base_path=$( readlink -f $( __go__resolve_definition root ) )
-			if [[ "${cur:1}" =~ / ]]; then
-				find_path=${resolved_base_path}$( dirname $cur )
-				find_chop=${find_path}/$( basename ${cur##*#} )
-			else
-				find_path=${resolved_base_path}
-				find_chop=${find_path}${cur}
-			fi
-		fi
-
-		__d resolved_base_path: $resolved_base_path
-		__d find_path: $find_path
-		__d find_chop: $find_chop
-	fi
-
-	if [ -n "$find_path" -a -n "$find_chop" ]; then
-		if [ -d "$find_chop" ]; then
-			find_path=$( readlink -f $find_chop );
-			find_chop=$find_path/;
-
-			__d find_path: $find_path
-			__d find_chop: $find_chop
-		fi
-
-		reply="$reply $( __go__find_and_ignore $find_path $find_chop $cur )";
-		__d reply: $reply
-	elif [ -n "$cur" ]; then
-		reply="$reply $( __go__definitions_name | sed 's/ /\n/g' | grep ^$cur )"
-		__d reply: $reply
-	else
-		reply="$reply $( __go__definitions_name | sed 's/ /\n/g' )"
-		__d reply: $reply
-
-		reply="$reply $( __go__find_and_ignore $cd_root "$cd_root" '' )";
-		__d reply: $reply
-	fi
-
-	COMPREPLY=( $reply )
+    # restore saved shell options
+    eval "$saved_opts"
 }
 
 go()
 {
 	__d params: "$@"
 
-	if __go__is_known_vc $1; then
+	if __go__is_known_vc "$1"; then
 		vc=$1;
 		shift;
 	fi
 
-	__d vc: $vc
+	__d "vc: $vc"
 
-	__go__load_definitions $vc
+	__go__load_definitions "$vc"
 
 	local def;
 	local def_subpath;
 	if [ -n "$1" ]; then
 		# are we dealing with definition offset
 		# def#path/to/some/thing
-		if [[ "$1" =~ \# ]]; then
+		if [[ "$1" == *'#'* ]]; then
 			def=${1%%#*}
-			def_subpath=$(echo $1 | sed 's/.*#//')
+			def_subpath="${1#*#}"
 		elif [[ "$1" =~ / ]]; then
 			def=root
 			def_subpath="$1"
@@ -214,31 +191,35 @@ go()
 		fi
 	fi
 
-	__d def: $def
+	__d "def: $def"
 	__cd_path="$( __go__resolve_definition "$def" )";
 	[ -n "$def_subpath" ] &&
 		__cd_path="${__cd_path}/${def_subpath}";
 
-	[ -n "$__cd_path" ] &&
-		cd $__cd_path ||
-		echo GO path could not be found.
+    { [ -n "$__cd_path" ] && cd "$__cd_path"; } ||
+		echo "GO path could not be found."
 }
 
 go_add()
 {
-    local shortcut dir;
-    if [ -z "$1" ]; then
-        echo Shortcut name not given.
-        return 1
-    elif ! [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; then
-        echo "Shortcut name must be a valid bash variable name"
-        return 1;
-    fi
+	local shortcut dir;
+	if [ -z "$1" ]; then
+		echo Shortcut name not given.
+		return 1
+	elif ! [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; then
+		echo "Shortcut name must be a valid bash variable name"
+		return 1;
+	fi
 
-    shortcut="$1"; shift;
-    dir="${1:-$(pwd)}";
+	shortcut="$1"; shift;
+	dir="${1:-$(pwd)}";
 
-    echo "cd_$shortcut=\"$dir\"" >> "${go_projects_conf}";
+	echo "cd_$shortcut=\"$dir\"" >> "${go_projects_conf}";
 }
 
-fi # if __go__is_interactive; then
+
+if ! declare -p __go__script_loaded &>/dev/null; then
+	complete -F __go__get_completions -o dirnames -o nospace go;
+fi
+
+export __go__script_loaded=1

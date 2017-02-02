@@ -28,48 +28,48 @@
 
 # debug print
 __d() {
-	: "${go_debug_syslog_tag:=rm-go}"
+    : "${go_debug_syslog_tag:=rm-go}"
 
-	[ "$go_debug" -eq 1 ] || {
+    [ "$go_debug" -eq 1 ] || {
         # if debug is disables, the pipe form of invocations should still oipe through
-		[ -n "$1" ] || cat
+        [ -n "$1" ] || cat
         return
     }
 
-	if [ -n "$1" ]; then
-		/usr/bin/logger -t $go_debug_syslog_tag -- "$@" </dev/null
-	else
+    if [ -n "$1" ]; then
+        /usr/bin/logger -t $go_debug_syslog_tag -- "$@" </dev/null
+    else
         # pipe through mode
         /usr/bin/logger -t $go_debug_syslog_tag -s 2>&1 | cut -c"$((${#go_debug_syslog_tag}+2))-"
-	fi
+    fi
 }
 
 __go__is_known_vc()
 {
-	local vc=$1;
-	[[ "$vc_options" =~ ^$vc:|:$vc:|$vc$ ]]
+    local vc=$1;
+    [[ "$vc_options" =~ ^$vc:|:$vc:|$vc$ ]]
 }
 
 __go__is_defined()
 {
-	declare -p "cd_$1" &>/dev/null
+    declare -p "cd_$1" &>/dev/null
 }
 
 __go__load_definitions()
 {
-	: "${vc:="${1:-}"}";
-	# shellcheck disable=SC1090
-	source "$go_projects_conf"
+    : "${vc:="${1:-}"}";
+    # shellcheck disable=SC1090
+    source "$go_projects_conf"
 }
 
 __go__resolve_definition()
 {
-	if [ -n "$1" ]; then
-		__go__is_defined "$1" &&
-			eval "echo \$cd_${1}"/;
-	else
-		echo "${cd_root:-}/"
-	fi
+    if [ -n "$1" ]; then
+        __go__is_defined "$1" &&
+            eval "echo \$cd_${1}"/;
+    else
+        echo "${cd_root:-}/"
+    fi
 }
 
 GoRegexBookmarkName='^[a-zA-Z0-9_]*$'
@@ -155,7 +155,7 @@ __go__get_completions() {
         done
     fi
 
-	__d "COMPREPLY: ${COMPREPLY[*]}"
+    __d "COMPREPLY: ${COMPREPLY[*]}"
 
     # restore saved shell options
     eval "$saved_opts"
@@ -163,63 +163,63 @@ __go__get_completions() {
 
 go()
 {
-	__d params: "$@"
+    __d params: "$@"
 
-	if __go__is_known_vc "$1"; then
-		vc=$1;
-		shift;
-	fi
+    if __go__is_known_vc "$1"; then
+        vc=$1;
+        shift;
+    fi
 
-	__d "vc: $vc"
+    __d "vc: $vc"
 
-	__go__load_definitions "$vc"
+    __go__load_definitions "$vc"
 
-	local def;
-	local def_subpath;
-	if [ -n "$1" ]; then
-		# are we dealing with definition offset
-		# def#path/to/some/thing
-		if [[ "$1" == *'#'* ]]; then
-			def=${1%%#*}
-			def_subpath="${1#*#}"
-		elif [[ "$1" =~ / ]]; then
-			def=root
-			def_subpath="$1"
-		else
-			def=$1
-			def_subpath=''
-		fi
-	fi
+    local def;
+    local def_subpath;
+    if [ -n "$1" ]; then
+        # are we dealing with definition offset
+        # def#path/to/some/thing
+        if [[ "$1" == *'#'* ]]; then
+            def=${1%%#*}
+            def_subpath="${1#*#}"
+        elif [[ "$1" =~ / ]]; then
+            def=root
+            def_subpath="$1"
+        else
+            def=$1
+            def_subpath=''
+        fi
+    fi
 
-	__d "def: $def"
-	__cd_path="$( __go__resolve_definition "$def" )";
-	[ -n "$def_subpath" ] &&
-		__cd_path="${__cd_path}/${def_subpath}";
+    __d "def: $def"
+    __cd_path="$( __go__resolve_definition "$def" )";
+    [ -n "$def_subpath" ] &&
+        __cd_path="${__cd_path}/${def_subpath}";
 
     { [ -n "$__cd_path" ] && cd "$__cd_path"; } ||
-		echo "GO path could not be found."
+        echo "GO path could not be found."
 }
 
 go_add()
 {
-	local shortcut dir;
-	if [ -z "$1" ]; then
-		echo Shortcut name not given.
-		return 1
-	elif ! [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; then
-		echo "Shortcut name must be a valid bash variable name"
-		return 1;
-	fi
+    local shortcut dir;
+    if [ -z "$1" ]; then
+        echo Shortcut name not given.
+        return 1
+    elif ! [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; then
+        echo "Shortcut name must be a valid bash variable name"
+        return 1;
+    fi
 
-	shortcut="$1"; shift;
-	dir="${1:-$(pwd)}";
+    shortcut="$1"; shift;
+    dir="${1:-$(pwd)}";
 
-	echo "cd_$shortcut=\"$dir\"" >> "${go_projects_conf}";
+    echo "cd_$shortcut=\"$dir\"" >> "${go_projects_conf}";
 }
 
 
 if ! declare -p __go__script_loaded &>/dev/null; then
-	complete -F __go__get_completions -o dirnames -o nospace go;
+    complete -F __go__get_completions -o dirnames -o nospace go;
 fi
 
 export __go__script_loaded=1

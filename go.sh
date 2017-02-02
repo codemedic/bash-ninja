@@ -28,19 +28,20 @@
 
 # debug print
 __d() {
-    : "${go_debug_syslog_tag:=rm-go}"
-
     [ "$go_debug" -eq 1 ] || {
         # if debug is disables, the pipe form of invocations should still oipe through
         [ -n "$1" ] || cat
         return
     }
 
+    : "${go_debug_syslog_tag:=rm-go}"
+
     if [ -n "$1" ]; then
-        /usr/bin/logger -t $go_debug_syslog_tag -- "$@" </dev/null
+        /usr/bin/logger -t "$go_debug_syslog_tag" -- "$@" </dev/null
     else
         # pipe through mode
-        /usr/bin/logger -t $go_debug_syslog_tag -s 2>&1 | cut -c"$((${#go_debug_syslog_tag}+2))-"
+        /usr/bin/logger -t "$go_debug_syslog_tag" -s 2>&1 | \
+            cut -c"$((${#go_debug_syslog_tag}+2))-"
     fi
 }
 

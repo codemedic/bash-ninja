@@ -12,10 +12,6 @@
 
 [ -t 0 ] || return 0
 
-# the first one is the default
-: "${vc_options:=svn:git:svnbranch}"
-: "${vc_default:=${vc_options%%:*}}"
-
 # version control root and bookmark definitions
 : "${go_projects_conf:=$HOME/go_bookmarks.conf}"
 
@@ -45,12 +41,6 @@ __d() {
     fi
 }
 
-__go__is_known_vc()
-{
-    local vc=$1;
-    [[ "$vc_options" =~ ^$vc:|:$vc:|$vc$ ]]
-}
-
 __go__is_defined()
 {
     declare -p "cd_$1" &>/dev/null
@@ -58,7 +48,6 @@ __go__is_defined()
 
 __go__load_definitions()
 {
-    : "${vc:="${1:-}"}";
     # shellcheck disable=SC1090
     source "$go_projects_conf"
 }
@@ -84,16 +73,9 @@ __go__get_completions() {
     # help with testing; pass in as args
     if [ "$1" = go ]; then
         cur=${COMP_WORDS[COMP_CWORD]}
-        local first=${COMP_WORDS[1]}
-        if __go__is_known_vc "$first"; then
-            vc=$first;
-        fi
-
         __d cur: "$cur"
-        __d first: "$first"
-        __d vc: "$vc"
 
-        __go__load_definitions "$vc"
+        __go__load_definitions
     else
         cur="$1"; shift
     fi
@@ -162,18 +144,10 @@ __go__get_completions() {
     eval "$saved_opts"
 }
 
-go()
-{
+go() {
     __d params: "$@"
 
-    if __go__is_known_vc "$1"; then
-        vc=$1;
-        shift;
-    fi
-
-    __d "vc: $vc"
-
-    __go__load_definitions "$vc"
+    __go__load_definitions
 
     local def;
     local def_subpath;

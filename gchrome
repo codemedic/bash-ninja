@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# google-chrome profile launcher
+#
+# Adaptation of various ideas and solutions mentioned in https://superuser.com/a/377195/28775
+# This script is meant to be "sourced" into your bash-profile. It provides command 'gchrome'
+# and provides auto-completion of the profile-name.
+
 : "${_gchrome_base_dir:="$HOME/.config/google-chrome"}"
 
 _gchrome_get_profiles() {

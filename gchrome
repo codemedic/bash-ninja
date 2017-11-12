@@ -1,0 +1,66 @@
+#!/bin/bash
+
+: "${_gchrome_base_dir:="$HOME/.config/google-chrome"}"
+
+_gchrome_get_profiles() {
+    < "${_gchrome_base_dir}/Local State" \
+        jq -r '[.profile.info_cache | to_entries[] | {"key": .key, "value": .value.name}] | .[] | "profiles+=([\(.value|@sh)]=\(.key|@sh));"'
+}
+
+_gchrome_get_completion() {
+    declare -A profiles
+    eval "$(_gchrome_get_profiles)"
+    for key in "${!profiles[@]}"; do
+        echo "$key";
+    done
+}
+
+_gchrome_make_completion() {
+    declare -A profiles
+    eval "$(_gchrome_get_profiles)"
+
+    COMPREPLY=()
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    for key in "${!profiles[@]}"; do
+        if [[ "$key" =~ ^$cur ]]; then
+            COMPREPLY+=( "$(printf '%q' "$key")" )
+        fi
+    done
+}
+
+_gchrome_is_valid_profile() {
+    local profile_path="${_gchrome_base_dir}/$1"
+    [ -n "$1" ] &&
+        [ -d "$(readlink -f "$profile_path")" ] &&
+        [ -f "$(readlink -f "$profile_path/Cookies")" ]
+}
+
+_gchrome_is_valid_profile_alias() {
+    declare -A profiles
+    eval "$(_gchrome_get_profiles)"
+
+    [ -n "${1:-}" ] &&
+        [ -v "profiles['${1:-}']" ] &&
+        _gchrome_is_valid_profile "${profiles[$1]}";
+}
+
+gchrome() {
+    local opts=()
+    declare -A profiles
+    eval "$(_gchrome_get_profiles)"
+
+    if _gchrome_is_valid_profile "${1:-}"; then
+        opts+=("--profile-directory=$1")
+        shift
+    elif _gchrome_is_valid_profile_alias "${1:-}"; then
+        opts+=("--profile-directory=${profiles[$1]}")
+        shift
+    fi
+
+    ( GTK_THEME="" \
+        /usr/bin/google-chrome --disk-cache-size=536870912 "${opts[@]}" "$@" &>/dev/null &
+        disown
+    )
+}
+
+complete -F _gchrome_make_completion gchrome

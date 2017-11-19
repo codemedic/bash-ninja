@@ -58,8 +58,8 @@ __go__get_completions_paths() {
 
     # e.g cd_root=/
     local bookmark_var="cd_${bookmark}"
-    [[ ! -v "$bookmark_var" ]] || {
-        local path="${!bookmark_var}" path_offset
+    if declare -p "${bookmark_var}" &> /dev/null; then
+		local path="${!bookmark_var}" path_offset
         # e.g root#dev/
         if [[ "$suffix" =~ /$ ]] && [ -d "${path}/${suffix}" ]; then
             path_offset="$suffix"
@@ -90,7 +90,7 @@ __go__get_completions_paths() {
                 done
             )
         fi
-    }
+    fi
 }
 
 __go__get_completions() {
@@ -157,7 +157,7 @@ go2() {
 
     __d "bookmark: $bookmark"
     local bookmark_var="cd_${bookmark}"
-    [[ -v "${bookmark_var}" ]] ||
+    declare -p "${bookmark_var}" &> /dev/null ||
         echo "Unknown bookmark '${bookmark}'"
 
     local cd_path="${!bookmark_var}";

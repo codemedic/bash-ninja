@@ -79,7 +79,6 @@ gchrome() {
     fi
 }
 
-set -x
 if [[ "$0" != "${BASH_SOURCE[0]}" ]]; then
     # being sourced
     complete -F _gchrome_make_completion gchrome

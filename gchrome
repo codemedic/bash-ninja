@@ -50,6 +50,11 @@ _gchrome_is_valid_profile_alias() {
         _gchrome_is_valid_profile "${profiles[$1]}";
 }
 
+_gchrome_get_last_used_profile() {
+    < "${_gchrome_base_dir}/Local State" \
+        jq -r '.profile.last_used'
+}
+
 gchrome() {
     local opts=()
     declare -A profiles
@@ -63,10 +68,26 @@ gchrome() {
         shift
     fi
 
-    ( GTK_THEME="" \
-        /usr/bin/google-chrome --disk-cache-size=536870912 "${opts[@]}" "$@" &>/dev/null &
-        disown
-    )
+    if [ "${_gchrome_exec:-0}" = 1 ]; then
+        export GTK_THEME=""
+        exec /usr/bin/google-chrome --disk-cache-size=536870912 "${opts[@]}" "$@" &>/dev/null
+    else
+        ( GTK_THEME="" \
+            /usr/bin/google-chrome --disk-cache-size=536870912 "${opts[@]}" "$@" &>/dev/null &
+            disown
+        )
+    fi
 }
 
-complete -F _gchrome_make_completion gchrome
+set -x
+if [[ "$0" != "${BASH_SOURCE[0]}" ]]; then
+    # being sourced
+    complete -F _gchrome_make_completion gchrome
+else
+    export _gchrome_exec=1
+    if _gchrome_is_valid_profile "$1" || _gchrome_is_valid_profile_alias "$1"; then
+        gchrome "$@"
+    else
+        gchrome "$(_gchrome_get_last_used_profile)" "$@"
+    fi
+fi

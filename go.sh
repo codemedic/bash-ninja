@@ -195,6 +195,6 @@ if ! declare -p __go__script_loaded &>/dev/null; then
 
     alias goto=go2
     complete -F __go__get_completions -o dirnames -o nospace goto;
-fi
 
-export __go__script_loaded=1
+    __go__script_loaded=1
+fi

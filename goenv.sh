@@ -54,7 +54,7 @@ goenv() {
         echo "PS1='(=Go ${goenv_name}) $PS1'"
         echo "alias ~=goenv_cd"
         echo "alias ~source=goenv_cd_source_dir"
-        echo "alias ~mount=goenv_mount \"\$GOENV_SOURCE_PATH\" \"\$GOENV_PACKAGE_PATH\""
+        echo 'alias ~mount="goenv_mount \"$GOENV_SOURCE_PATH\" \"$GOENV_PACKAGE_PATH\""'
         echo "alias ~umount=goenv_umount"
         echo "goenv_cd"
     )

@@ -84,8 +84,8 @@ __go__get_completions_paths() {
                     COMPREPLY+=( "${preserve_prefix}${path_offset}${compl_option}" )
             done < <(
                 local symlink
-                find "$path" -maxdepth 1 "${name_pattern[@]}" -type d -printf '%P/\n'
-                find "$path" -maxdepth 1 "${name_pattern[@]}" -type l -printf '%P\n' | while read -r symlink; do
+                find -L "$path" -maxdepth 1 "${name_pattern[@]}" -type d -printf '%P/\n'
+                find -L "$path" -maxdepth 1 "${name_pattern[@]}" -type l -printf '%P\n' | while read -r symlink; do
                     [ ! -d "$(readlink -f "${path}/${symlink}")" ] || echo "$symlink/"
                 done
             )

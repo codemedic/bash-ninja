@@ -1,5 +1,5 @@
 `open-url` is a wrapper script to make it possible to open URL in an already running browser, rather than the
-"default-browser". It aware of a set of browsers, and has a priorderised list of browsers. When invoked with a URL as
+"default-browser". It is aware of a set of browsers, and has a priorderised list of browsers. When invoked with a URL as
 its argument, it will look through the priority list to figure out if one of them is running already. If a running
 browser is found, it is used to open the URL. If no running browser is found, it picks the first in the priority list to
 open the URL.

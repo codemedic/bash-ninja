@@ -217,7 +217,7 @@ goenv_umount() {
 }
 
 goenv_dir_has_go_file() {
-    for f in "$1"/*.go; do
+    for f in "$1"/*.go "$1"/Gopkg.toml; do
         if [ -f "$f" ]; then
             return 0
         fi

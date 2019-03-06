@@ -3,6 +3,21 @@
 # base-path within which new go-workspaces (per-project) are created
 goenv_base_path="$HOME/GoEnv"
 
+# source-base-path is the directory where you keep your source
+# expected directory structure there is as below
+#  $HOME/source-base-path
+#   +- git.server1.com
+#       +- project1
+#       |   +- repo1
+#       |       +- Gopkg.toml
+#       |       +- main.go
+#       |   +- repo2
+#       +- project2
+#           +- repo1
+#           +- repo2
+#   +- git.server2.com
+source_base_path="$HOME/development"
+
 # replace the shell based on environment variables
 goenv_replace_shell_env_vars=(
     # if invoked from VSCode Terminal
@@ -23,8 +38,7 @@ goenv() {
     path="$(realpath -s "$path")"
 
     if ! goenv_path="$(goenv_get_path "$path")"; then
-        goenv_create "$path"
-        if ! goenv_path="$(goenv_get_path "$path")"; then
+        if ! goenv_create "$path" || ! goenv_path="$(goenv_get_path "$path")"; then
             echo "Could not create goenv"
             return 1
         fi
@@ -91,16 +105,13 @@ goenv_get_path() {
     : "${path:="${1:-.}"}"
     path="$(realpath -s "$path")"
 
-    local base_path
-    : "${base_path:="${goenv_base_path:?Define goenv_base_path}"}"
-
     local dot_goenv
     if [ -f "${path}/.goenv" ]; then
         dot_goenv="${path}/.goenv"
     elif [[ "$path" =~ .*/((bitbucket\.[^/]+|github\.com|exercism)/([^/]+)/([^/]+)) ]]; then
         local package project_path
         package="${BASH_REMATCH[1]}"
-        project_path="${base_path}/$(basename "$package")"
+        project_path="${goenv_base_path}/$(basename "$package")"
         if [ -d "${project_path}" ] || [ -f "${project_path}/.goenv" ]; then
             dot_goenv="${project_path}/.goenv"
         fi
@@ -125,13 +136,11 @@ goenv_create() {
     : "${path:="${1:-.}"}"
     path="$(realpath -s "$path")"
 
-    local base_path
-    : "${base_path:="${goenv_base_path:?Define goenv_base_path}"}"
-
     if [[ "$path" =~ .*/((bitbucket\.[^/]+|github\.com|exercism)/([^/]+)/([^/]+)) ]] && goenv_dir_has_go_file "$path"; then
         local package project_path
         package="${BASH_REMATCH[1]}"
-        project_path="${base_path}/$(basename "$package")"
+        project_path="${goenv_base_path}/$(basename "$package")"
+        project_path_templated="\${goenv_base_path}/$(basename "$package")"
         if [ -d "${project_path}" ]; then
             echo "$project_path already exists; remove it and try again"
             return 1
@@ -140,12 +149,19 @@ goenv_create() {
         mkdir -p "${project_path}/src/${package}" "${project_path}/bin"
         goenv_mount "${BASH_REMATCH[0]}" "${project_path}/src/${package}"
         {
+            local source_path
+
+            source_path="${BASH_REMATCH[0]}"
+            if [[ "$source_path" == "$source_base_path"* ]]; then
+                source_path="\${source_base_path}/${source_path#"$source_base_path"/}"
+            fi
+
             echo "local goenv_name goenv_path goenv_package_path goenv_source_path goenv_source_package"
             echo "goenv_name=${BASH_REMATCH[3]}/${BASH_REMATCH[4]}"
-            echo "goenv_path=$project_path" 
-            echo "goenv_package_path=${project_path}/src/${package}" 
-            echo "goenv_source_path=${BASH_REMATCH[0]}" 
-            echo "goenv_source_package=${package}" 
+            echo "goenv_path=$project_path_templated"
+            echo "goenv_package_path=${project_path_templated}/src/${package}"
+            echo "goenv_source_path=${source_path}"
+            echo "goenv_source_package=${package}"
         } >"$path/.goenv"
         cp "$path/.goenv" "${project_path}"
     else

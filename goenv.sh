@@ -7,15 +7,23 @@ goenv_base_path="$HOME/GoEnv"
 # expected directory structure there is as below
 #  $HOME/source-base-path
 #   +- git.server1.com
-#       +- project1
+#   |   +- project1
+#   |   |   +- repo1
+#   |   |       +- Gopkg.toml
+#   |   |       +- main.go
+#   |   |   +- repo2
+#   |   +- project2
+#   |       +- repo1
+#   |       +- repo2
+#   +- github.com
+#       +- user1
 #       |   +- repo1
 #       |       +- Gopkg.toml
 #       |       +- main.go
 #       |   +- repo2
-#       +- project2
+#       +- company1
 #           +- repo1
 #           +- repo2
-#   +- git.server2.com
 source_base_path="$HOME/development"
 
 # replace the shell based on environment variables

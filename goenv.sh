@@ -156,6 +156,9 @@ goenv_create() {
                 source_path="\${source_base_path}/${source_path#"$source_base_path"/}"
             fi
 
+            echo "# config file for goenv command"
+            echo "# see https://github.com/codemedic/bash-ninja for detail"
+            echo ""
             echo "local goenv_name goenv_path goenv_package_path goenv_source_path goenv_source_package"
             echo "goenv_name=${BASH_REMATCH[3]}/${BASH_REMATCH[4]}"
             echo "goenv_path=$project_path_templated"

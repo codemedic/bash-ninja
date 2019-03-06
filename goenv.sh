@@ -49,6 +49,7 @@ goenv() {
         echo "export GOENV_NAME=\"${goenv_name}\""
         echo "export GOENV_SOURCE_PATH=\"$goenv_source_path\""
         echo "export GOENV_PACKAGE_PATH=\"$goenv_package_path\""
+        echo "export GOENV_PATH=\"$goenv_path\""
         echo "export GOENV_OLD_PS1='$PS1'"
         echo "PROMPT_DIRTRIM=2"
         echo "PS1='(=Go ${goenv_name}) $PS1'"
@@ -96,21 +97,24 @@ goenv_get_path() {
     local dot_goenv
     if [ -f "${path}/.goenv" ]; then
         dot_goenv="${path}/.goenv"
-    elif [[ "$path" =~ .*/((bitbucket\.[^/]+|github\.com)/[^/]+/[^/]+) ]]; then
+    elif [[ "$path" =~ .*/((bitbucket\.[^/]+|github\.com|exercism)/([^/]+)/([^/]+)) ]]; then
         local package project_path
         package="${BASH_REMATCH[1]}"
         project_path="${base_path}/$(basename "$package")"
-        if [ ! -d "${project_path}" ] || [ ! -f "${project_path}/.goenv" ]; then
-            return 1
+        if [ -d "${project_path}" ] || [ -f "${project_path}/.goenv" ]; then
+            dot_goenv="${project_path}/.goenv"
         fi
+    fi
 
-        dot_goenv="${project_path}/.goenv"
-    else
-        echo "Unknown path structure; path:$path"
+    if [ -z "$dot_goenv" ] || [ ! -f "$dot_goenv" ]; then
         return 1
     fi
 
     . "$dot_goenv"
+
+    if [ ! -d "$goenv_path" ]; then
+        return 1
+    fi
 
     echo "$goenv_path"
 }
@@ -124,7 +128,7 @@ goenv_create() {
     local base_path
     : "${base_path:="${goenv_base_path:?Define goenv_base_path}"}"
 
-    if [[ "$path" =~ .*/((bitbucket|github)[^/]*/[^/]+/[^/]+) ]] && goenv_dir_has_go_file "$path"; then
+    if [[ "$path" =~ .*/((bitbucket\.[^/]+|github\.com|exercism)/([^/]+)/([^/]+)) ]] && goenv_dir_has_go_file "$path"; then
         local package project_path
         package="${BASH_REMATCH[1]}"
         project_path="${base_path}/$(basename "$package")"
@@ -137,7 +141,7 @@ goenv_create() {
         goenv_mount "${BASH_REMATCH[0]}" "${project_path}/src/${package}"
         {
             echo "local goenv_name goenv_path goenv_package_path goenv_source_path goenv_source_package"
-            echo "goenv_name=$(basename "$project_path")"
+            echo "goenv_name=${BASH_REMATCH[3]}/${BASH_REMATCH[4]}"
             echo "goenv_path=$project_path" 
             echo "goenv_package_path=${project_path}/src/${package}" 
             echo "goenv_source_path=${BASH_REMATCH[0]}" 
@@ -150,14 +154,21 @@ goenv_create() {
     fi
 }
 
+__goenv_prefix() {
+    while read -r line; do
+        echo "$1$line"
+    done
+}
+
 goenv_destroy() {
     if goenv_is_valid; then
-        if [[ "$PWD" = "$GOENV_SOURCE_PATH"* ]]; then
-            cd "$GOENV_SOURCE_PATH" || :
-        fi
-
         if goenv_umount; then
-            rm -rvf "$goenv_path"
+            if [[ "$PWD" = "$GOENV_PATH"* ]]; then
+                cd "$GOENV_SOURCE_PATH" || :
+            fi
+
+            echo "Removing $GOENV_PATH"
+            rm -rvf "$GOENV_PATH" 2>&1 | __goenv_prefix "    "
             PS1='(=Go INVALID) '"$GOENV_OLD_PS1"
 
             echo "GoEnv '${GOENV_NAME}' destroyed."
@@ -165,6 +176,8 @@ goenv_destroy() {
         else
             echo "Failed to unmount source-path"
         fi
+    else
+        echo "No active goenv"
     fi
 }
 
@@ -201,7 +214,12 @@ goenv_mount() {
 }
 
 goenv_umount() {
+    # get out of the way for umount
+    if [[ "$PWD" = "$GOENV_PACKAGE_PATH"* ]]; then
+        cd "$GOENV_SOURCE_PATH" || :
+    fi
     if goenv_is_valid && mountpoint -q "$GOENV_PACKAGE_PATH"; then
+        echo "Unmounting $GOENV_PACKAGE_PATH"
         case "$goenv_mount_method" in
         mount)
             sudo umount "$GOENV_PACKAGE_PATH"
@@ -217,7 +235,7 @@ goenv_umount() {
 }
 
 goenv_dir_has_go_file() {
-    for f in "$1"/*.go; do
+    for f in "$1"/*.go "$1"/Gopkg.toml; do
         if [ -f "$f" ]; then
             return 0
         fi

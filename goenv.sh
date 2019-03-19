@@ -63,6 +63,28 @@ goenv() {
     # When you are done press Ctrl+D or invoke 'exit' command
     goenv_exec bash --rcfile <(
         cat "$HOME/.bashrc"
+        cat <<-IDE
+        goenv_ide() {
+            local ide_bin
+
+            ide_bin="\$1"; shift
+
+            # if you specify options
+            if [ \$# -gt 0 ]; then
+                # they are passed on to the IDE
+                "\$ide_bin" "\$@"
+            else
+                # otherwise open the current GoEnv
+                "\$ide_bin" "\$GOENV_PATH"
+            fi
+        }
+        if goland_bin=\$(which goland 2>/dev/null); then
+            alias goland="goenv_ide \"\$goland_bin\""
+        fi
+        if code_bin=\$(which code 2>/dev/null); then
+            alias code="goenv_ide \"\$code_bin\""
+        fi
+IDE
         echo "export __GOENV=1"
         echo "export GOPATH=\"$goenv_path\""
         echo "export GOBIN=\"\$GOPATH/bin\""

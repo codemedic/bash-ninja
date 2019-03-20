@@ -45,11 +45,13 @@ goenv() {
     : "${path:="${1:-.}"}"
     path="$(realpath -s "$path")"
 
+    local newly_created=0
     if ! goenv_path="$(goenv_get_path "$path")"; then
         if ! goenv_create "$path" || ! goenv_path="$(goenv_get_path "$path")"; then
             echo "Could not create goenv"
             return 1
         fi
+        newly_created=1
     fi
 
     . "${goenv_path}/.goenv"
@@ -72,10 +74,18 @@ goenv() {
             # if you specify options
             if [ \$# -gt 0 ]; then
                 # they are passed on to the IDE
-                "\$ide_bin" "\$@"
+                ((
+                    # FIX: The IDE ignores SIGINT: the "Stop" button in run configurations may not work.
+                    trap - SIGINT
+                    "\$ide_bin" "\$@"
+                ) & disown)
             else
                 # otherwise open the current GoEnv
-                "\$ide_bin" "\$GOENV_PATH"
+                ((
+                    # FIX: The IDE ignores SIGINT: the "Stop" button in run configurations may not work.
+                    trap - SIGINT
+                    "\$ide_bin" "\$GOENV_PATH"
+                ) & disown)
             fi
         }
         if goland_bin=\$(which goland 2>/dev/null); then
@@ -85,6 +95,25 @@ goenv() {
             alias code="goenv_ide \"\$code_bin\""
         fi
 IDE
+        cat <<-HELP
+alias ~help=goenv_help
+goenv_help() {
+  cat <<-GOENV_HELP
+Commands available to work with GoEnv.
+  ~        cd to location of the package within GoEnv
+  ~source  cd to the original source location of the package
+  ~mount   mount package path (say, after a restart)
+  ~umount  unmount package path
+  goland   available if goland is installed and available as goland command.
+           If invoked without any parameters, opens GoEnv as a project. Do
+           remember to set GOPATH to "$GOROOT"
+  code     available if VS Code is installed. If invoked without any
+           parameters, opens GoEnv as a project. Do remember to have
+           "Infer GOPATH from the workspace root" option to be ON.
+  ~help    To see this help again
+GOENV_HELP
+        }
+HELP
         echo "export __GOENV=1"
         echo "export GOPATH=\"$goenv_path\""
         echo "export GOBIN=\"\$GOPATH/bin\""
@@ -102,6 +131,12 @@ IDE
         echo 'alias ~mount="goenv_mount \"$GOENV_SOURCE_PATH\" \"$GOENV_PACKAGE_PATH\""'
         echo "alias ~umount=goenv_umount"
         echo "goenv_cd"
+
+        if [[ "$newly_created" == 1 ]]; then
+            echo "echo 'New GoEnv created; All good to Go!'"
+            echo "echo"
+            echo "goenv_help"
+        fi
     )
 }
 

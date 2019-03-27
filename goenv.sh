@@ -77,6 +77,7 @@ goenv() {
         echo "export GOENV_OLD_PS1='$PS1'"
         echo "PROMPT_DIRTRIM=2"
         echo "PS1='(=Go ${goenv_name}) $PS1'"
+        echo "alias ~~=cd_gopath"
         echo "alias ~=goenv_cd"
         echo "alias ~source=goenv_cd_source_dir"
         echo 'alias ~mount="goenv_mount \"$GOENV_SOURCE_PATH\" \"$GOENV_PACKAGE_PATH\""'
@@ -230,6 +231,10 @@ goenv_cd_source_dir() {
     fi
 }
 
+cd_gopath() {
+    cd "$GOPATH"
+}
+
 goenv_cd() {
     if goenv_is_valid; then
         cd "$GOENV_PACKAGE_PATH"
@@ -334,6 +339,7 @@ goenv_help() {
     cat <<-GOENV_HELP
 Commands available to work with GoEnv.
  ~        cd to location of the package within GoEnv
+ ~~       cd to GOPATH ( $GOPATH )
  ~source  cd to the original source location of the package
  ~mount   mount package path (say, after a restart)
  ~umount  unmount package path

@@ -85,6 +85,8 @@ goenv() {
         echo "alias ~help=goenv_help"
         echo "goenv_setup_ide"
         echo "goenv_cd"
+        echo "goenv_tab_title \"${goenv_name}\""
+        echo "trap goenv_tab_title EXIT"
 
         if [[ "$newly_created" == 1 ]]; then
             echo "echo 'New GoEnv created; All good to Go!'"
@@ -301,6 +303,10 @@ goenv_quiet() {
     if [[ "${1:-1}" == 1 ]]; then
         exec &>/dev/null
     fi
+}
+
+goenv_tab_title() {
+    echo -n -e "\033]0;$*\007"
 }
 
 goenv_ide() {

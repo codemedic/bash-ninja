@@ -3,8 +3,8 @@
 # base-path within which new go-workspaces (per-project) are created
 goenv_base_path="$HOME/GoEnv"
 
-# source-base-path is the directory where you keep your source
-# expected directory structure there is as below
+# source-base-path is the directory where you keep your source for multiple projects.
+# Expected directory structure there is as below
 #  $HOME/source-base-path
 #   +- git.server1.com
 #   |   +- project1
@@ -29,9 +29,9 @@ source_base_path="$HOME/development"
 # replace the shell based on environment variables
 goenv_replace_shell_env_vars=(
     # if invoked from VSCode Terminal
-    TERM_PROGRAM=vscode
+    'TERM_PROGRAM=vscode'
     # if invoked from IntelliJ (or derivatives) Terminal
-    TERMINAL_EMULATOR=JetBrains-JediTerm
+    'TERMINAL_EMULATOR=JetBrains-JediTerm'
 )
 
 # mount command to use, in order to place the source location inside the go-workspace. Options available are `bindfs`
@@ -39,11 +39,36 @@ goenv_replace_shell_env_vars=(
 goenv_mount_method=mount
 
 goenv() {
-    local path
+    local path ide
 
-    # If no arguments are give, assume that the curent directory is the project root
-    : "${path:="${1:-.}"}"
-    path="$(realpath -s "$path")"
+    cli_opts="$(getopt -n goenv -o r:i:h --long project-root:,open-ide:,help -- "$@" )" || {
+        goenv_cmd_usage_help "Invalid usage"
+        return
+    }
+    eval "cli_opts=( ${cli_opts} )"
+    for ((i = 0; i < ${#cli_opts[@]}; ++i)); do
+        case "${cli_opts[$i]}" in
+            -r|--project-root)
+                path="${cli_opts[$((++i))]}"
+                ;;
+            -i|--open-ide)
+                ide="${cli_opts[$((++i))]}"
+                ;;
+            -h|--help)
+                goenv_cmd_usage_help
+                return
+                ;;
+            --)
+                ;;
+            *)
+                goenv_cmd_usage_help "Invalid usage"
+                return
+                ;;
+        esac
+    done
+
+    # if not specified, assume that the curent directory is the project root
+    path="$(realpath -s "${path:-.}")"
 
     local newly_created=0
     if ! goenv_path="$(goenv_get_path "$path")"; then
@@ -54,8 +79,11 @@ goenv() {
         newly_created=1
     fi
 
+    # shellcheck disable=SC1090
     . "${goenv_path}/.goenv"
 
+    # shellcheck disable=SC2154
+    # loaded from the sourcing above
     goenv_mount "${goenv_source_path}" "${goenv_package_path}"
 
     # Take recent history with you when you =Go
@@ -80,7 +108,7 @@ goenv() {
         echo "alias ~~=cd_gopath"
         echo "alias ~=goenv_cd"
         echo "alias ~source=goenv_cd_source_dir"
-        echo 'alias ~mount="goenv_mount \"$GOENV_SOURCE_PATH\" \"$GOENV_PACKAGE_PATH\""'
+        echo "alias ~mount='goenv_mount \"$GOENV_SOURCE_PATH\" \"$GOENV_PACKAGE_PATH\"'"
         echo "alias ~umount=goenv_umount"
         echo "alias ~help=goenv_help"
         echo "goenv_setup_ide"
@@ -92,6 +120,11 @@ goenv() {
             echo "echo 'New GoEnv created; All good to Go!'"
             echo "echo"
             echo "goenv_help"
+        fi
+
+        if [ -n "${ide:-}" ]; then
+            echo "echo 'Opening GoEnv in IDE'"
+            echo "goenv_ide $ide"
         fi
     )
 }
@@ -142,6 +175,7 @@ goenv_get_path() {
         return 1
     fi
 
+    # shellcheck disable=SC1090
     . "$dot_goenv"
 
     if [ ! -d "$goenv_path" ]; then
@@ -157,7 +191,7 @@ goenv_create() {
     : "${path:="${1:-.}"}"
     path="$(realpath -s "$path")"
 
-    if [[ "$path" =~ .*/((bitbucket\.[^/]+|github\.com|exercism)/([^/]+)/([^/]+)) ]] && goenv_dir_has_go_file "$path"; then
+    if [[ "$path" =~ .*/((bitbucket.[^/]+|github.com|exercism)/([^/]+)/([^/]+)) ]] && goenv_dir_has_go_file "$path"; then
         local package project_path
         package="${BASH_REMATCH[1]}"
         goenv_name="${BASH_REMATCH[3]}#${BASH_REMATCH[4]}"
@@ -205,6 +239,7 @@ __goenv_prefix() {
 goenv_destroy() {
     if goenv_is_valid; then
         if goenv_umount; then
+            # shellcheck disable=SC2153
             if [[ "$PWD" = "$GOENV_PATH"* ]]; then
                 cd "$GOENV_SOURCE_PATH" || :
             fi
@@ -213,6 +248,7 @@ goenv_destroy() {
             rm -rvf "$GOENV_PATH" 2>&1 | __goenv_prefix "    "
             PS1='(=Go INVALID) '"$GOENV_OLD_PS1"
 
+            # shellcheck disable=SC2153
             echo "GoEnv '${GOENV_NAME}' destroyed."
             echo "Please close this terminal session."
         else
@@ -229,17 +265,17 @@ goenv_is_valid() {
 
 goenv_cd_source_dir() {
     if goenv_is_valid; then
-        cd "$GOENV_SOURCE_PATH"
+        cd "$GOENV_SOURCE_PATH" || :
     fi
 }
 
 cd_gopath() {
-    cd "$GOPATH"
+    cd "$GOPATH" || :
 }
 
 goenv_cd() {
     if goenv_is_valid; then
-        cd "$GOENV_PACKAGE_PATH"
+        cd "$GOENV_PACKAGE_PATH" || :
     fi
 }
 
@@ -292,9 +328,11 @@ goenv_dir_has_go_file() {
 
 goenv_setup_ide() {
     if goland_bin=$(which goland 2>/dev/null); then
+        # shellcheck disable=SC2139
         alias goland="goenv_ide \"$goland_bin\""
     fi
     if code_bin=$(which code 2>/dev/null); then
+        # shellcheck disable=SC2139
         alias code="goenv_ide \"$code_bin\""
     fi
 }
@@ -306,7 +344,7 @@ goenv_quiet() {
 }
 
 goenv_tab_title() {
-    echo -n -e "\033]0;$*\007"
+    echo -n -e "\\033]0;$*\\007"
 }
 
 goenv_ide() {
@@ -341,8 +379,30 @@ goenv_ide() {
     fi
 }
 
+goenv_cmd_usage_help() {
+    if [ -n "$*" ]; then
+        echo "error: $*"
+    fi
+
+    cat <<-GoEnvUsage
+goenv [--open-ide=<IDE>] [--project-root=<ProjectPath>] [--help]
+
+-i <IDE>, --open-ide=<IDE>
+    Open the project in the specified IDE. IDEs supported are goland and vs-code
+
+-r <ProjectPath>, --project-root=<ProjectPath> (default: '.')
+    Use the specified path as the project root, rather than the default '.'
+
+-h,--help Show this help.
+
+GoEnvUsage
+    if [ -n "$*" ]; then
+        return 1
+    fi
+}
+
 goenv_help() {
-    cat <<-GOENV_HELP
+    cat <<-GoEnvHelp
 Commands available to work with GoEnv.
  ~        cd to location of the package within GoEnv
  ~~       cd to GOPATH ( $GOPATH )
@@ -356,5 +416,5 @@ Commands available to work with GoEnv.
           parameters, opens GoEnv as a project. Do remember to have
           "Infer GOPATH from the workspace root" option to be ON.
  ~help    To see this help again
-GOENV_HELP
+GoEnvHelp
 }

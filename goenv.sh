@@ -40,14 +40,18 @@ goenv_mount_method=mount
 
 goenv() {
     local path ide
+    local dep_ensure=0
 
-    cli_opts="$(getopt -n goenv -o r:i:h --long project-root:,open-ide:,help -- "$@" )" || {
+    cli_opts="$(getopt -n goenv -o r:i:dh --long project-root:,open-ide:,dep-ensure,help -- "$@" )" || {
         goenv_cmd_usage_help "Invalid usage"
         return
     }
     eval "cli_opts=( ${cli_opts} )"
     for ((i = 0; i < ${#cli_opts[@]}; ++i)); do
         case "${cli_opts[$i]}" in
+            -d|--dep-ensure)
+                dep_ensure=1
+                ;;
             -r|--project-root)
                 path="${cli_opts[$((++i))]}"
                 ;;
@@ -125,6 +129,11 @@ goenv() {
         if [ -n "${ide:-}" ]; then
             echo "echo 'Opening GoEnv in IDE'"
             echo "goenv_ide $ide"
+        fi
+
+        if [[ "$dep_ensure" == 1 ]]; then
+            echo "echo 'Running dep ensure'"
+            echo "dep ensure -v"
         fi
     )
 }

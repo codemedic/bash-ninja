@@ -34,6 +34,9 @@ goenv_replace_shell_env_vars=(
     'TERMINAL_EMULATOR=JetBrains-JediTerm'
 )
 
+# trim "go-" prefix or "-go" suffix from project dir name
+goenv_project_name_trim_go=true
+
 # mount command to use, in order to place the source location inside the go-workspace. Options available are `bindfs`
 # and "plain-old" `mount` (with `sudo`)
 goenv_mount_method=mount
@@ -201,9 +204,15 @@ goenv_create() {
     path="$(realpath -s "$path")"
 
     if [[ "$path" =~ .*/((bitbucket.[^/]+|github.com|exercism)/([^/]+)/([^/]+)) ]] && goenv_dir_has_go_file "$path"; then
-        local package project_path
+        local package project_path parent_dir project_dir source_path
+        source_path="${BASH_REMATCH[0]}"
         package="${BASH_REMATCH[1]}"
-        goenv_name="${BASH_REMATCH[3]}#${BASH_REMATCH[4]}"
+        parent_dir="${BASH_REMATCH[3]}"
+        project_dir="${BASH_REMATCH[4]}"
+        if [[ "$goenv_project_name_trim_go" == true ]] && [[ "$project_dir" =~ ^(go-)?(.+)(-go)?$ ]]; then
+            project_dir="${BASH_REMATCH[2]}"
+        fi
+        goenv_name="${parent_dir}#${project_dir}"
         project_path="${goenv_base_path}/${goenv_name}"
         project_path_templated="\${goenv_base_path}/${goenv_name}"
         if [ -d "${project_path}" ]; then
@@ -212,11 +221,8 @@ goenv_create() {
         fi
 
         mkdir -p "${project_path}/src/${package}" "${project_path}/bin"
-        goenv_mount "${BASH_REMATCH[0]}" "${project_path}/src/${package}"
+        goenv_mount "${source_path}" "${project_path}/src/${package}"
         {
-            local source_path
-
-            source_path="${BASH_REMATCH[0]}"
             if [[ "$source_path" == "$source_base_path"* ]]; then
                 source_path="\${source_base_path}/${source_path#"$source_base_path"/}"
             fi

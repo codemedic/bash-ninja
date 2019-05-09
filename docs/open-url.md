@@ -1,3 +1,5 @@
+# Open URL - minimalist browser preference management, but techie friendly
+
 `open-url` is a wrapper script to make it possible to open URL in an already running browser, rather than the
 "default-browser". It is aware of a set of browsers, and has a priorderised list of browsers. When invoked with a URL as
 its argument, it will look through the priority list to figure out if one of them is running already. If a running

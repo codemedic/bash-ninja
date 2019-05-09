@@ -135,8 +135,10 @@ goenv() {
         fi
 
         if [[ "$dep_ensure" == 1 ]]; then
-            echo "echo 'Running dep ensure'"
-            echo "dep ensure -v"
+            echo "if [[ -f 'Gopkg.toml' ]]; then"
+            echo "    echo 'Running dep ensure'"
+            echo "    dep ensure -v"
+            echo "fi"
         fi
     )
 }

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # google-chrome profile launcher
 #
@@ -6,7 +6,38 @@
 # This script is meant to be "sourced" into your bash-profile. It provides command 'gchrome'
 # and provides auto-completion of the profile-name.
 
-: "${_gchrome_base_dir:="$HOME/.config/google-chrome"}"
+if [ "${BASH_VERSINFO:-0}" -le 4 ]; then
+  echo "gchrome: google-chrome profile launcher
+  Error: Bash version ${BASH_VERSION} < 4
+  google-chrome profile launcher requires bash version 4 or greater (we use associative arrays).
+  Install it with something like:
+    brew install bash
+      or
+    sudo apt-get install bash"
+  exit 1
+fi
+
+if ! which -s jq; then
+  echo "gchrome: google-chrome profile launcher
+  Error: jq not found.
+  jq is a lightweight and flexible command-line JSON processor. Install it with something like:
+    brew install jq
+      or
+    sudo apt-get install jq"
+  exit 1
+fi
+
+if test -d "$HOME/.config/google-chrome"; then
+  : "${_gchrome_base_dir:="$HOME/.config/google-chrome"}"
+else
+  : "${_gchrome_base_dir:="$HOME/Library/Application Support/Google/Chrome"}"
+fi
+
+if test -f "/usr/bin/google-chrome"; then
+  : "${_gchrome_executable:="/usr/bin/google-chrome"}"
+else
+  : "${_gchrome_executable:="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}"
+fi
 
 _gchrome_get_profiles() {
     < "${_gchrome_base_dir}/Local State" \
@@ -70,10 +101,10 @@ gchrome() {
 
     if [ "${_gchrome_exec:-0}" = 1 ]; then
         export GTK_THEME=""
-        exec /usr/bin/google-chrome --disk-cache-size=536870912 "${opts[@]}" "$@" &>/dev/null
+        exec "${_gchrome_executable}" --disk-cache-size=536870912 "${opts[@]}" "$@" &>/dev/null
     else
         ( GTK_THEME="" \
-            /usr/bin/google-chrome --disk-cache-size=536870912 "${opts[@]}" "$@" &>/dev/null &
+            "${_gchrome_executable}" --disk-cache-size=536870912 "${opts[@]}" "$@" &>/dev/null &
             disown
         )
     fi

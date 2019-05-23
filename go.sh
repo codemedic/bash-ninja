@@ -23,6 +23,18 @@
 : "${go_bash_debug:=0}"
 : "${go_bash_debug_file:="$HOME/go-xtrace.txt"}"
 
+grep() {
+    /usr/bin/env grep "$@"
+}
+
+logger() {
+    /usr/bin/env logger "$@"
+}
+
+cut() {
+    /usr/bin/env cut "$@"
+}
+
 # debug print
 __d() {
     [ "$go_debug" -eq 1 ] || {
@@ -34,16 +46,15 @@ __d() {
     : "${go_debug_syslog_tag:=go2}"
 
     if [ -n "$1" ]; then
-        /usr/bin/logger -t "$go_debug_syslog_tag" -- "$@" </dev/null
+        logger -t "$go_debug_syslog_tag" -- "$@" </dev/null
     else
         # pipe through mode
-        /usr/bin/logger -t "$go_debug_syslog_tag" -s 2>&1 | \
+        logger -t "$go_debug_syslog_tag" -s 2>&1 | \
             cut -c"$((${#go_debug_syslog_tag}+2))-"
     fi
 }
 
-__go__load_definitions()
-{
+__go__load_definitions() {
     # shellcheck disable=SC1090
     source "$go_projects_conf"
 }
@@ -168,8 +179,7 @@ go2() {
         echo "GO path could not be found."
 }
 
-go2_add()
-{
+go2_add() {
     local shortcut dir;
     if [ -z "$1" ]; then
         echo Shortcut name not given.

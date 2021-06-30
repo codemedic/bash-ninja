@@ -21,6 +21,8 @@ goenv_base_path="$HOME/GoEnv"
 #       |       +- Gopkg.toml
 #       |       +- main.go
 #       |   +- repo2
+#       |       +- go.mod
+#       |       +- main.go
 #       +- company1
 #           +- repo1
 #           +- repo2
@@ -138,6 +140,9 @@ goenv() {
             echo "if [[ -f 'Gopkg.toml' ]]; then"
             echo "    echo 'Running dep ensure'"
             echo "    dep ensure -v"
+            echo "elif [[ -f 'go.mod' ]]; then"
+            echo "    echo 'Running go mod tidy'"
+            echo "    go mod tidy"
             echo "fi"
         fi
     )
@@ -334,7 +339,7 @@ goenv_umount() {
 }
 
 goenv_dir_has_go_file() {
-    for f in "$1"/*.go "$1"/Gopkg.toml; do
+    for f in "$1"/*.go "$1"/Gopkg.toml "$1"/go.mod; do
         if [ -f "$f" ]; then
             return 0
         fi

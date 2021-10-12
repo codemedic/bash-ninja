@@ -59,7 +59,7 @@ __go__get_completions_paths() {
     # e.g cd_root=/
     local bookmark_var="cd_${bookmark}"
     if declare -p "${bookmark_var}" &> /dev/null; then
-		local path="${!bookmark_var}" path_offset
+        local path="${!bookmark_var}" path_offset
         # e.g root#dev/
         if [[ "$suffix" =~ /$ ]] && [ -d "${path}/${suffix}" ]; then
             path_offset="$suffix"
@@ -78,17 +78,10 @@ __go__get_completions_paths() {
             find_completions=0
         fi
 
-        if [ "$find_completions" = 1 ]; then
+        if [ "$find_completions" = 1 ] && [ -d "$path" ]; then
             while read -r compl_option; do
-                [ "$compl_option" = '/' ] ||
-                    COMPREPLY+=( "${preserve_prefix}${path_offset}${compl_option}" )
-            done < <(
-                local symlink
-                find -L "$path" -maxdepth 1 "${name_pattern[@]}" -type d -printf '%P/\n'
-                find -L "$path" -maxdepth 1 "${name_pattern[@]}" -type l -printf '%P\n' | while read -r symlink; do
-                    [ ! -d "$(readlink -f "${path}/${symlink}")" ] || echo "$symlink/"
-                done
-            )
+                COMPREPLY+=( "${preserve_prefix}${path_offset}${compl_option}" )
+            done < <(find -L "$path" -maxdepth 1 -mindepth 1 "${name_pattern[@]}" \( -type d -or -type l -xtype d \) -printf '%P/\n')
         fi
     fi
 }

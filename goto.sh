@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # go2 command - love commandline and love bookmarks, this is their love child!
 #
@@ -51,6 +51,14 @@ __go__load_definitions()
 GoRegexBookmarkName='^[a-zA-Z0-9_]*$'
 GoRegexBookmarkSuffix='^(([a-zA-Z0-9_]+)#)(.*)$'
 
+__go__find() {
+    if command -v gfind &>/dev/null; then
+        gfind "$@"
+    else
+        find "$@"
+    fi
+}
+
 __go__get_completions_paths() {
     local bookmark="$1" preserve_prefix="$2" suffix="$3"; shift 3
 
@@ -81,7 +89,7 @@ __go__get_completions_paths() {
         if [ "$find_completions" = 1 ] && [ -d "$path" ]; then
             while read -r compl_option; do
                 COMPREPLY+=( "${preserve_prefix}${path_offset}${compl_option}" )
-            done < <(find -L "$path" -maxdepth 1 -mindepth 1 "${name_pattern[@]}" \( -type d -or -type l -xtype d \) -printf '%P/\n')
+            done < <(__go__find -L "$path" -maxdepth 1 -mindepth 1 "${name_pattern[@]}" \( -type d -or -type l -xtype d \) -printf '%P/\n')
         fi
     fi
 }

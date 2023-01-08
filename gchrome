@@ -36,7 +36,7 @@ fi
 if test -f "/usr/bin/google-chrome"; then
   : "${_gchrome_executable:="/usr/bin/google-chrome"}"
 else
-  : "${_gchrome_executable:="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}"
+  : "${_gchrome_executable:="/applications/google chrome.app/contents/macos/google chrome"}"
 fi
 
 _gchrome_get_profiles() {
@@ -115,9 +115,23 @@ if [[ "$0" != "${BASH_SOURCE[0]}" ]]; then
     complete -F _gchrome_make_completion gchrome
 else
     export _gchrome_exec=1
-    if _gchrome_is_valid_profile "$1" || _gchrome_is_valid_profile_alias "$1"; then
-        gchrome "$@"
-    else
-        gchrome "$(_gchrome_get_last_used_profile)" "$@"
-    fi
+
+    while getopts "p:" opt; do
+      case "$opt" in
+        p)
+          if _gchrome_is_valid_profile "$OPTARG" || _gchrome_is_valid_profile_alias "$OPTARG"; then
+            shift $((OPTIND-1))
+            gchrome "$OPTARG" "$@"
+          else
+            >&2 echo "Not a valid Chrome profile: \`$OPTARG\`"
+            >&2 echo "Valid profiles: $(_gchrome_get_profiles))"
+            exit 1
+          fi
+          ;;
+        *)
+          gchrome "$(_gchrome_get_last_used_profile)" "$@"
+          ;;
+      esac
+    done
+
 fi

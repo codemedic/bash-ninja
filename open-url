@@ -20,7 +20,7 @@ add_browser_if_available() {
 
 is_browser_running() {
     debug "$1 - pids"
-    pgrep "$1"
+    pidof -q "$1"
 }
 
 launch() {

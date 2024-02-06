@@ -262,6 +262,7 @@ goenv_destroy() {
             fi
 
             echo "Removing $GOENV_PATH"
+            chmod -R u+w "$GOENV_PATH"
             rm -rvf "$GOENV_PATH" 2>&1 | __goenv_prefix "    "
             PS1='(=Go INVALID) '"$GOENV_OLD_PS1"
 

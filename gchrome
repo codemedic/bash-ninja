@@ -90,3 +90,4 @@ else
         gchrome "$(_gchrome_get_last_used_profile)" "$@"
     fi
 fi
+
